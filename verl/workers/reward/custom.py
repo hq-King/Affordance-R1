@@ -18,14 +18,14 @@ from transformers import PreTrainedTokenizer
 from gensim.models import KeyedVectors
 
 from verl import DataProto
-from verl.utils.reward_score import math_compute_score, r1v_compute_score, seg_compute_score, seg_strict_compute_score, vision_reasoner_compute_score
+from verl.utils.reward_score import math_compute_score, r1v_compute_score, seg_compute_score, seg_strict_compute_score, aff_r1_score
 
 
 class CustomRewardManager:
     def __init__(self, tokenizer: PreTrainedTokenizer, num_examine: int, compute_score: str):
         self.tokenizer = tokenizer
         self.num_examine = num_examine
-        self.sim_model = KeyedVectors.load_word2vec_format('/tos-bjml-researcheval/wanghanqing/model/NathaNn1111/word2vec-google-news-negative-300-bin/GoogleNews-vectors-negative300.bin', binary=True)
+        self.sim_model = KeyedVectors.load_word2vec_format('NathaNn1111/word2vec-google-news-negative-300-bin/GoogleNews-vectors-negative300.bin', binary=True)
         if compute_score == "math":
             self.compute_score = math_compute_score
         elif compute_score == "r1v":
@@ -34,8 +34,8 @@ class CustomRewardManager:
             self.compute_score = seg_compute_score
         elif compute_score == "seg_strict":
             self.compute_score = seg_strict_compute_score
-        elif compute_score == "vision_reasoner":
-            self.compute_score = vision_reasoner_compute_score
+        elif compute_score == "aff_r1":
+            self.compute_score = aff_r1_score
         else:
             raise NotImplementedError()
 
@@ -79,5 +79,6 @@ class CustomRewardManager:
                 print("[aff_truth]", aff_truth)
                 print("[part_truth]", part_truth)
                 print("[score]", score)
+                print("[length]", len(response_str))
 
         return reward_tensor

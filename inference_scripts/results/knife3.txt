@@ -1,0 +1,10 @@
+<think>
+The part of the knife that would be used to control it more safely is the handle. The handle is the part that allows the user to hold
+
+<rethink>
+The handle of the knife is the part that allows the user to hold
+</rethink> 
+
+<answer>[{"bbox_2d": [620,19,776,199], "point_2d": [731,70], "affordance": "hold"}]</answer>
+
+In order to control this knife more safely, which part should I hold?

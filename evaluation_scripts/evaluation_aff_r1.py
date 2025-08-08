@@ -11,10 +11,10 @@ import pdb
 import os
 import re
 import numpy as np
-
+import ast
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reasoning_model_path", type=str, default="Ricky06662/Seg-Zero-7B")
+    parser.add_argument("--reasoning_model_path", type=str, default="hqking/affordance-r1")
     parser.add_argument("--segmentation_model_path", type=str, default="facebook/sam2-hiera-large")
     parser.add_argument("--output_path", type=str, required=True)
     parser.add_argument("--test_data_path", type=str, required=True)
@@ -45,8 +45,14 @@ def extract_bbox_points_think(output_text, x_factor, y_factor):
     think_match = re.search(think_pattern, output_text)
     if think_match:
         think_text = think_match.group(1)
+
+    rethink_pattern = r'<rethink>([^<]+)</rethink>'
+    rethink_text = ""
+    rethink_match = re.search(rethink_pattern, output_text)
+    if rethink_match:
+        rethink_text = rethink_match.group(1)
     
-    return pred_bboxes, pred_points, think_text
+    return pred_bboxes, pred_points, think_text, rethink_text
 
 def compute_iou(mask1, mask2):
     intersection = np.logical_and(mask1, mask2).sum()
@@ -106,19 +112,21 @@ def main():
     # pdb.set_trace()
     dataset = dataset.select(range(start_idx, end_idx))
     
-    if 'bbox' in dataset[0]:
+    if 'bboxes' in dataset[0]:
         has_bbox = True
     else:
         has_bbox = False
     
     QUESTION_TEMPLATE = \
-        "Please find \"{Question}\" with bboxs and points." \
-        "Please compare the different parts of each object and find the most closely matched part(s) related to the question." \
-        "Output the thinking process in <think> </think> and final answer in <answer> </answer> tags." \
-        "Output the bbox(es), point(s), affordance type and part name inside the interested object(s) in JSON format." \
-        "i.e., <think> thinking process here </think>" \
-        "<answer>{Answer}</answer>"
-    
+            "Please answer \"{Question}\" with bboxs and points." \
+            "Analyze the functional properties of specific parts of each object in the image and carefully find all the part(s) that matches the problem." \
+            "Output the thinking process in <think> </think>, rethinking process in <rethink> </rethink> and final answer in <answer> </answer> tags." \
+            "Output the bbox(es) and point(s) and affordance tpye(s) inside the interested object(s) in JSON format." \
+            "i.e., <think> thinking process here </think>" \
+            "<rethink> rethinking process here </rethink>" \
+            "<answer>{Answer}</answer>"
+
+
     messages = []
     id_list = []
     for item in dataset:
@@ -134,7 +142,7 @@ def main():
                     "type": "problem",
                     "text": QUESTION_TEMPLATE.format(
                         Question=item["problem"].lower().strip(".\"?!"),
-                        Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110], \"affordance\": hold,  \"part_name\": handle}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410], \"affordance\": grasp, \"part_name\": lid}]"
+                        Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110], \"affordance\": \"hold\"}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410], \"affordance\": \"grasp\"}]"
                     )    
                 }
             ]
@@ -148,7 +156,7 @@ def main():
             "img_width": item["img_width"],
             "mask_height": item["mask_h"],
             "mask_width": item["mask_w"],
-            "bbox": item["bbox"] if has_bbox else None
+            "bbox": item["bboxes"] if has_bbox else None
         })
 
     all_outputs = []
@@ -184,7 +192,7 @@ def main():
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
             for id_idx in range(len(batch_output_text)):
                 try:
-                    bboxes, points, think = extract_bbox_points_think(
+                    bboxes, points, think, rethink = extract_bbox_points_think(
                                             batch_output_text[id_idx], 
                                             batch_id_list[id_idx]["img_width"]/resize_size, 
                                             batch_id_list[id_idx]["img_height"]/resize_size
@@ -249,13 +257,31 @@ def main():
                         # skip this because the image or mask is not correct
                         bbox_iou = 0.0
 
-                
+         
+
+                bboxes_gt_str = batch_id_list[id_idx]["bbox"]
+
+                # 使用 ast.literal_eval 将字符串转换为列表
+                bboxes_gt_list = ast.literal_eval(bboxes_gt_str)
+
+                # 将坐标转换为所需的格式 [[x1, y1, x2, y2]]
+                formatted_bboxes = []
+                for bbox in bboxes_gt_list:
+                    x1, y1 = bbox[0]
+                    x2, y2 = bbox[1]
+                    formatted_bboxes.append([x1, y1, x2, y2])
+
+
                 all_outputs.append({
                     "image_id": batch_id_list[id_idx]["image_id"],
                     "think": think,
+                    "rething": rethink,
+                    "bboxes": bboxes,
+                    "points": points,
                     "intersection": int(intersection),
                     "union": int(union),
-                    "bbox_iou": bbox_iou
+                    "bbox_iou": bbox_iou,
+                    "bboxes_gt":formatted_bboxes
                 })
         print(f"Processed batch {i//args.batch_size + 1}/{(len(messages) + args.batch_size - 1)//args.batch_size}")
         

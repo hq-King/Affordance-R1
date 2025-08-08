@@ -3,7 +3,7 @@ import json
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 
-def vision_reasoner_format_reward(predict_str: str) -> float:
+def aff_r1_score_format_reward(predict_str: str) -> float:
     pattern = r"<think>.*?</think>\s*<rethink>.*?</rethink>\s*<answer>.*?</answer>"
     match = re.fullmatch(pattern, predict_str, re.DOTALL)
     thinking_format_reward = 1.0 if match else 0.0 
@@ -36,10 +36,10 @@ def vision_reasoner_format_reward(predict_str: str) -> float:
                     # if isinstance(bbox_2d, list) and len(bbox_2d) == 4:
                     cur_reward += 1.0
 
-                if 'object_part' in item:
-                    # affordance = item['affordance']
-                    # if isinstance(bbox_2d, list) and len(bbox_2d) == 4:
-                    cur_reward += 1.0
+                # if 'object_part' in item:
+                #     # affordance = item['affordance']
+                #     # if isinstance(bbox_2d, list) and len(bbox_2d) == 4:
+                #     cur_reward += 1.0
                 
                 segmentation_format_reward += cur_reward / data_cnt
         except Exception:
@@ -50,7 +50,7 @@ def vision_reasoner_format_reward(predict_str: str) -> float:
     
     return thinking_format_reward + segmentation_format_reward
 
-def vision_reasoner_accuracy_reward(predict_str: str, ground_truth: str) -> float:
+def aff_r1_score_accuracy_reward(predict_str: str, ground_truth: str) -> float:
     max_accuracy_reward = 0.0
     MAX_OBJECTS = 120  # 设置上限
     
@@ -88,7 +88,7 @@ def vision_reasoner_accuracy_reward(predict_str: str, ground_truth: str) -> floa
             points_in_box = batch_points_in_box(pred_points, pred_bboxes)  # (M,)
             
             # 计算reward矩阵
-            iou_reward = (iou_matrix > 0.5).astype(float)
+            iou_reward = (iou_matrix > 0.65).astype(float)
             bbox_l1_reward = (l1_matrix < 10).astype(float)
             point_reward = ((points_dist_matrix < 30) & points_in_box[:,np.newaxis]).astype(float)
             
@@ -109,7 +109,7 @@ def vision_reasoner_accuracy_reward(predict_str: str, ground_truth: str) -> floa
         pass
     return max_accuracy_reward
 
-def vision_reasoner_non_repeat_reward(predict_str: str) -> float:
+def aff_r1_score_non_repeat_reward(predict_str: str) -> float:
     non_repeat_reward = 1.0  # 初始满分
     try:
         sentences = predict_str.split('.')
@@ -134,7 +134,7 @@ def vision_reasoner_non_repeat_reward(predict_str: str) -> float:
     
     return non_repeat_reward
 
-def aff_rewarf_compute_score(predict_str:str, affordance_truth: str,sim_model):
+def aff_reward_compute_score(predict_str:str, affordance_truth: str,sim_model):
     max_accuracy_reward = 0
     try:
         aff_name = affordance_truth
@@ -152,7 +152,7 @@ def aff_rewarf_compute_score(predict_str:str, affordance_truth: str,sim_model):
         pass
     return max_accuracy_reward
 
-def part_rewarf_compute_score(predict_str:str, affordance_truth: str,sim_model):
+def part_reward_compute_score(predict_str:str, affordance_truth: str,sim_model):
     max_accuracy_reward = 0
     try:
         # gt_data = json.loads(affordance_truth)
@@ -172,18 +172,41 @@ def part_rewarf_compute_score(predict_str:str, affordance_truth: str,sim_model):
     return max_accuracy_reward
 
 
-def vision_reasoner_compute_score(predict_str: str, ground_truth: str,affordance_truth: str,part_truth: str,sim_model) -> float:
+def aff_r1_score(predict_str: str, ground_truth: str,affordance_truth: str,part_truth: str,sim_model) -> float:
     # print(predict_str, ground_truth)
-    format_reward = vision_reasoner_format_reward(predict_str)
-    accuracy_reward = vision_reasoner_accuracy_reward(predict_str, ground_truth)
-    non_repeat_reward = vision_reasoner_non_repeat_reward(predict_str)
-    aff_reward = aff_rewarf_compute_score(predict_str,affordance_truth,sim_model)
-    part_reward = part_rewarf_compute_score(predict_str,part_truth,sim_model)
-    affordance_reward = 0
-    fruit = aff_reward + part_reward
-    if fruit == 2:
-        affordance_reward  = 1
-    reward = format_reward + accuracy_reward + non_repeat_reward + aff_reward + affordance_reward + part_reward#11
+    # 新增：判断 bbox 个数是否与 gt 相同的奖励
+    bbox_count_reward = 0.0  # 默认奖励为0
+
+    try:
+        # 提取模型输出的 bbox 个数
+        json_match = re.search(r'<answer>\s*(.*?)\s*</answer>', predict_str, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group(1))
+            pred_bboxes_count = len(data)
+            
+            # 提取 gt 的 bbox 个数
+            gt_data = json.loads(ground_truth)
+            gt_bboxes_count = len(gt_data)
+            # print(gt_data)
+            print(gt_bboxes_count )
+            # 如果个数相同，奖励为1
+            if pred_bboxes_count == gt_bboxes_count:
+                bbox_count_reward = 1.0
+    
+    except Exception:
+        pass
+    
+    format_reward = aff_r1_score_format_reward(predict_str)
+    accuracy_reward = aff_r1_score_accuracy_reward(predict_str, ground_truth)
+    non_repeat_reward = aff_r1_score_non_repeat_reward(predict_str)
+    aff_reward = aff_reward_compute_score(predict_str,affordance_truth,sim_model)
+    # part_reward = part_rewarf_compute_score(predict_str,part_truth,sim_model)
+    # affordance_reward = 0
+    # fruit = aff_reward + part_reward
+    # if fruit == 2:
+    #     affordance_reward  = 1
+    # 添加一个新的奖励条件
+    reward = format_reward + accuracy_reward + non_repeat_reward + aff_reward + bbox_count_reward
     return reward
 
 def batch_iou(boxes1, boxes2):
@@ -242,4 +265,4 @@ if __name__ == "__main__":
 [{"bbox_2d": [416, 7, 833, 553], "point_2d": [648, 249]}]"""
     print(predict_str)
     print(ground_truth)
-    print(vision_reasoner_compute_score(predict_str, ground_truth))
+    print(aff_r1_score(predict_str, ground_truth))

@@ -99,14 +99,29 @@ class RLHFDataset(Dataset):
         #     "i.e., <think> thinking process here </think>" \
         #     "<answer>{Answer}</answer>"
         ################ Old Version ################
+        # self.user_prompt = "<image>\n" \
+        #     "Please answer \"{Question}\" with bboxs and points." \
+        #     "Analyze the problem carefully and infer the part(s) that best matches the problem." \
+        #     "Output the thinking process in <think> </think>, rethinking process in <rethink> </rethink> and final answer in <answer> </answer> tags." \
+        #     "Output the bbox(es) and point(s) and affordance tpye(s) inside the interested object(s) in JSON format." \
+        #     "i.e., <think> thinking process here </think>" \
+        #     "<rethink> rethinking process here </rethink>" \
+        #     "<answer>{Answer}</answer>"
+        # self.user_prompt = "<image>\n" \
+        #     "Please find \"{Question}\" with bboxs and points." \
+        #     "Analyze the functional properties of specific parts of each object in the image and carefully find all the part that matches the problem." \
+        #     "Output the thinking process in <think> </think>  while output rethinking process between <rethink> </rethink> based on the thinking contents and final answer the question in <answer> </answer> tags."\
+        #     "Output all the matched bbox(es), point(s)and affordance type inside the interested object part(s) in JSON format.And in some cases there may be more than one matched objects and parts. " \
+        #     "i.e., <think> thinking process here </think>" \
+        #     "<rethink> rethinking process here </rethink>" \
+        #     "<answer>{Answer}</answer>"
         self.user_prompt = "<image>\n" \
-            "Please find \"{Question}\" with bboxs and points." \
-            "Carefully analyze the functional attributes of each object in the image and find the most closely matched part(s) related to the question." \
-            "Output the thinking process in <think> </think>  while output necessary coordinates needed to answer the question."\
-            "Then, based on the thinking contents and coordinates, rethink between <rethink> </rethink>  and final answer the question in <answer> </answer> tags." \
-            "Output the bbox(es), point(s), affordance type and part name inside the interested object(s) in JSON format." \
-            "i.e., <think> thinking process here </think>" \
-            "<rethink> rethinking process here </rethink>" \
+            "Please answer \"{Question}\" with bboxs and points." \
+            "Analyze the functional properties of specific parts of each object in the image and carefully find all the part(s) that matches the problem." \
+            "Output the thinking process in <think> </think>, rethinking process in <rethink> </rethink> and final answer in <answer> </answer> tags." \
+            "Output the bbox(es) and point(s) and affordance tpye(s) inside the interested object(s) in JSON format." \
+            "i.e., <think> thinking process here </think>," \
+            "<rethink> rethinking process here </rethink>," \
             "<answer>{Answer}</answer>"
 
     def __len__(self):
@@ -130,7 +145,8 @@ class RLHFDataset(Dataset):
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": self.user_prompt.format(
                 Question=row_dict["problem"].lower().strip("."),
-                Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110]}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410]}]"
+                # Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110]}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410]}]"
+                Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110], \"affordance\": \"hold\"}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410], \"affordance\": \"grasp\"}]"
             )},
         ]
         prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)

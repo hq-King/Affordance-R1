@@ -1,12 +1,13 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import argparse
 from transformers import Qwen2VLForConditionalGeneration, Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 import torch
 import json
-from datasets import load_from_disk
-from tqdm import tqdm
 import pdb
-import os
+
+import cv2
 from PIL import Image as PILImage
 import re
 from sam2.sam2_image_predictor import SAM2ImagePredictor
@@ -15,41 +16,42 @@ import matplotlib.pyplot as plt
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reasoning_model_path", type=str, default="Ricky06662/Seg-Zero-7B")
+    parser.add_argument("--reasoning_model_path", type=str, default="hqking/affordance-r1")
     parser.add_argument("--segmentation_model_path", type=str, default="facebook/sam2-hiera-large")
-    parser.add_argument("--text", type=str, default="the unusal object in the image")
-    parser.add_argument("--image_path", type=str, default="./assets/test_image.png")
-    parser.add_argument("--output_path", type=str, default="./inference_scripts/test_output.png")
+    parser.add_argument("--text", type=str, default="To control the knife safely, where should I hold?")
+    parser.add_argument("--image_path", type=str, default="")
+    parser.add_argument("--output_path", type=str, default="")
     return parser.parse_args()
 
 
 def extract_bbox_points_think(output_text, x_factor, y_factor):
-    json_pattern = r'{[^}]+}'  # 匹配最简单的JSON对象
-    json_match = re.search(json_pattern, output_text)
-    # pdb.set_trace()
+    json_match = re.search(r'<answer>\s*(.*?)\s*</answer>', output_text, re.DOTALL)
     if json_match:
-        data = json.loads(json_match.group(0))
-        # 查找bbox键
-        bbox_key = next((key for key in data.keys() if 'bbox' in key.lower()), None)
-        # pdb.set_trace()
-        if bbox_key and len(data[bbox_key]) == 4:
-            content_bbox = data[bbox_key]
-            content_bbox = [round(int(content_bbox[0])*x_factor), round(int(content_bbox[1])*y_factor), round(int(content_bbox[2])*x_factor), round(int(content_bbox[3])*y_factor)]
-        # 查找points键
-        points_keys = [key for key in data.keys() if 'points' in key.lower()][:2]  # 获取前两个points键
-        if len(points_keys) == 2:
-            point1 = data[points_keys[0]]
-            point2 = data[points_keys[1]]
-            point1 = [round(int(point1[0])*x_factor), round(int(point1[1])*y_factor)]
-            point2 = [round(int(point2[0])*x_factor), round(int(point2[1])*y_factor)]
-            points = [point1, point2]
+        data = json.loads(json_match.group(1))
+        pred_bboxes = [[
+            int(item['bbox_2d'][0] * x_factor + 0.5),
+            int(item['bbox_2d'][1] * y_factor + 0.5),
+            int(item['bbox_2d'][2] * x_factor + 0.5),
+            int(item['bbox_2d'][3] * y_factor + 0.5)
+        ] for item in data]
+        pred_points = [[
+            int(item['point_2d'][0] * x_factor + 0.5),
+            int(item['point_2d'][1] * y_factor + 0.5)
+        ] for item in data]
     
     think_pattern = r'<think>([^<]+)</think>'
     think_match = re.search(think_pattern, output_text)
+    think_text = ""
     if think_match:
         think_text = think_match.group(1)
     
-    return content_bbox, points, think_text
+    rethink_pattern = r'<rethink>([^<]+)</rethink>'
+    rethink_match = re.search(rethink_pattern, output_text)
+    rethink_text = ""
+    if rethink_match:
+        rethink_text = rethink_match.group(1)
+
+    return pred_bboxes, pred_points, think_text, rethink_text
 
 def main():
     args = parse_args()
@@ -61,7 +63,6 @@ def main():
         attn_implementation="flash_attention_2",
         device_map="auto",
     )
-
         
     segmentation_model = SAM2ImagePredictor.from_pretrained(args.segmentation_model_path)
     
@@ -73,12 +74,13 @@ def main():
     print("User question: ", args.text)
         
     QUESTION_TEMPLATE = \
-        "Please find '{Question}' with bbox and points." \
-        "Compare the difference between objects and find the most closely matched one." \
-        "Output the thinking process in <think> </think> and final answer in <answer> </answer> tags." \
-        "Output the one bbox and points of two largest inscribed circles inside the interested object in JSON format." \
-        "i.e., <think> thinking process here </think>" \
-        "<answer>{Answer}</answer>"
+            "Please answer \"{Question}\" with bboxs and points." \
+            "Analyze the functional properties of specific parts of each object in the image and carefully find all the part(s) that matches the problem." \
+            "Output the thinking process in <think> </think>, rethinking process in <rethink> </rethink> and final answer in <answer> </answer> tags." \
+            "Output the bbox(es) and point(s) and affordance tpye(s) inside the interested object(s) in JSON format." \
+            "i.e., <think> thinking process here </think>," \
+            "<rethink> rethinking process here </rethink>," \
+            "<answer>{Answer}</answer>"
     
     
     image = PILImage.open(args.image_path)
@@ -92,15 +94,17 @@ def main():
         "role": "user",
         "content": [
         {
-                "type": "image", 
-                "image": image.resize((resize_size, resize_size), PILImage.BILINEAR) 
-            },
-            {   
-                "type": "text",
-                "text": QUESTION_TEMPLATE.format(Question=args.text.lower().strip("."), 
-                                                    Answer="{'bbox': [10,100,200,210], 'points_1': [30,110], 'points_2': [35,180]}")
-            }
-        ]
+            "type": "image", 
+            "image": image.resize((resize_size, resize_size), PILImage.BILINEAR)
+        },
+        {   
+            "type": "text",
+            "text": QUESTION_TEMPLATE.format(
+                Question=args.text.lower().strip("."),
+                Answer="[{\"bbox_2d\": [10,100,200,210], \"point_2d\": [30,110]}, {\"bbox_2d\": [225,296,706,786], \"point_2d\": [302,410], \"affordance\": \"grasp\"]"
+            )    
+        }
+    ]
     }]
     messages.append(message)
 
@@ -128,40 +132,74 @@ def main():
     output_text = processor.batch_decode(
         generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )
-        
-    bbox, points, think = extract_bbox_points_think(output_text[0], x_factor, y_factor)
     
-    print("Thinking process: ", think)
+    print(output_text[0])
+    # pdb.set_trace()
+    bboxes, points, think, rethink = extract_bbox_points_think(output_text[0], x_factor, y_factor)
+    # print(points, len(points))
+    
+    # print("Thinking process: ", think)
+    # print("Rethinking process: ", rethink)
+    
+    # pdb.set_trace()
     
     with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+        mask_all = np.zeros((image.height, image.width), dtype=bool)
         segmentation_model.set_image(image)
-        masks, scores, _ = segmentation_model.predict(
-            point_coords=points,
-            point_labels=[1,1],
-            box=bbox
-        )
-        sorted_ind = np.argsort(scores)[::-1]
-        masks = masks[sorted_ind]
+        for bbox, point in zip(bboxes, points):
+            masks, scores, _ = segmentation_model.predict(
+                point_coords=[point],
+                point_labels=[1],
+                box=bbox
+            )
+            sorted_ind = np.argsort(scores)[::-1]
+            masks = masks[sorted_ind]
+            mask = masks[0].astype(bool)
+            mask_all = np.logical_or(mask_all, mask)
     
-    mask = masks[0].astype(bool)
-    
+    # 修改为1行4列的子图布局
     plt.figure(figsize=(8, 4))
+    
+    # 第一个子图：原图
     plt.subplot(1, 2, 1)
     plt.imshow(image)
     plt.title('Original Image')
     
+    # 第二个子图：mask叠加
     plt.subplot(1, 2, 2)
     plt.imshow(image, alpha=0.6)
     mask_overlay = np.zeros_like(image)
-    mask_overlay[mask == 1] = [255, 0, 0]
+    mask_overlay[mask_all] = [255, 0, 0]
     plt.imshow(mask_overlay, alpha=0.4)
     plt.title('Image with Predicted Mask')
-    plt.show()
     
     plt.tight_layout()
-    plt.savefig(args.output_path)
+    # plt.savefig(args.output_path)
+    draw_mask_on_image(image,mask_all,args.output_path)
     plt.close() 
+
+
+def draw_mask_on_image(image_path, mask, output_path):
+    # 打开图像并转换为 NumPy 数组
+    image = np.array(image_path.convert("RGB"))
     
+    # # 确保图像和掩码的形状匹配
+    # assert image.shape[:2] == mask.shape, "图像和掩码的形状不匹配"
+
+    # 创建一个 Matplotlib 图形
+    plt.figure(figsize=(10, 10))
+    plt.imshow(image)
+
+    # 绘制掩码
+    masked_image = np.zeros_like(image)
+    masked_image[mask] = [255, 0, 0]  # 将掩码区域设置为红色
+    plt.imshow(masked_image, alpha=0.5)  # 半透明叠加
+
+    # 保存结果
+    plt.axis('off')
+    plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
+    plt.close()
+
 
 if __name__ == "__main__":
     main()
