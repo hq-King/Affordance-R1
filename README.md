@@ -2,7 +2,7 @@
 
 The repo is the official implement of **"Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model"**.   
 
-Paper: [📖 Seg-Zero](https://arxiv.org/abs/2503.06520)   
+Paper: [📖 coming soon](https://arxiv.org/abs/2503.06520)   
 Model: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1)
 
 
