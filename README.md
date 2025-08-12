@@ -1,9 +1,14 @@
-# Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model
+<div align="center">
+<h1 align="center" >
+ Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model
+</h1>
+
 
 The repo is the official implementation of **"Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model"**.   
 
 Paper: [📖 Arxiv](https://arxiv.org/abs/2508.06206)   
 Model: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1)
+</div>
 
 
 ## News
