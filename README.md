@@ -63,7 +63,7 @@ python inference_scripts/infer.py
 Download pretrained models:[Qwen2.5-VL-7B](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) and [SAM2](https://huggingface.co/facebook/sam2-hiera-large)
 Modify the path in `training_scripts/aff_r1.sh` and  `training_scripts/aff_r1.yaml`  and then run the following command to start training:
 ```bash
-bash training_scripts/run_visionreasoner_7b_4x80G.sh
+bash training_scripts/run_aff_r1.sh
 ```
 After training, run the following command to merge the model"
 ```bash
