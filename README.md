@@ -7,7 +7,7 @@
 The repo is the official implementation of **"Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model"**.   
 
 Paper: [📖 Arxiv](https://arxiv.org/abs/2508.06206)   
-Model: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1)
+Model: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1/tree/main)
 </div>
 
 
@@ -83,4 +83,14 @@ We would like to thank the following repos for their great work:
 - This work is built upon the [seg_zero](https://github.com/dvlab-research/Seg-Zero) and [veRL](https://github.com/volcengine/verl).
 - This work utilizes models from  [Qwen2-VL](https://huggingface.co/Qwen/Qwen2-VL-2B-Instruct), [Qwen2.5-VL](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) and [SAM2](https://huggingface.co/facebook/sam2-hiera-large). 
 
+## Acknowledgement
+```
+@inproceedings{Wang2025AffordanceR1RL,
+  title={Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model},
+  author={Hanqing Wang and Shaoyang Wang and Yiming Zhong and Zemin Yang and Jiamin Wang and Zhiqing Cui and Jiahao Yuan and Yifan Han and Mingyu Liu and Yuexin Ma},
+  year={2025},
+  url={https://api.semanticscholar.org/CorpusID:280561601}
+}
+
+```
 
