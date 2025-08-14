@@ -53,7 +53,7 @@ pip install gensim
 ```
 
 ## Inference
-Download pretrained models: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1)
+Download pretrained models: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1/tree/main)
 Modify the path in inference_scripts/infer.py and then run the following 
 ```bash
 python inference_scripts/infer.py 
