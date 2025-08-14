@@ -4,6 +4,7 @@
 </h1>
 
 
+
 The repo is the official implementation of **"Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model"**.   
 
 Paper: [📖 Arxiv](https://arxiv.org/abs/2508.06206)   
