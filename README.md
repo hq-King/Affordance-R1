@@ -68,7 +68,7 @@ bash training_scripts/run_aff_r1.sh
 ```
 After training, run the following command to merge the model"
 ```bash
-python3 training_scripts/model_merger.py --local_dir [path_to_your_actor_checkpoint]```
+python3 training_scripts/model_merger.py --local_dir [path_to_your_actor_checkpoint]
 ```
 
 ## Evaluation  
@@ -86,12 +86,11 @@ We would like to thank the following repos for their great work:
 
 ## Acknowledgement
 ```
-@inproceedings{Wang2025AffordanceR1RL,
+@article{wang2025affordance,
   title={Affordance-R1: Reinforcement Learning for Generalizable Affordance Reasoning in Multimodal Large Language Model},
-  author={Hanqing Wang and Shaoyang Wang and Yiming Zhong and Zemin Yang and Jiamin Wang and Zhiqing Cui and Jiahao Yuan and Yifan Han and Mingyu Liu and Yuexin Ma},
-  year={2025},
-  url={https://api.semanticscholar.org/CorpusID:280561601}
+  author={Wang, Hanqing and Wang, Shaoyang and Zhong, Yiming and Yang, Zemin and Wang, Jiamin and Cui, Zhiqing and Yuan, Jiahao and Han, Yifan and Liu, Mingyu and Ma, Yuexin},
+  journal={arXiv preprint arXiv:2508.06206},
+  year={2025}
 }
-
 ```
 
