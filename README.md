@@ -9,6 +9,9 @@ The repo is the official implementation of **"Affordance-R1: Reinforcement Learn
 
 Paper: [📖 Arxiv](https://arxiv.org/abs/2508.06206)   
 Model: [🤗 Affordance-R1](https://huggingface.co/hqking/affordance-r1/tree/main)
+Dataset: [🤗 HuggingFace](https://huggingface.co/datasets/hqking/affordance-R1)
+Dataset: [🤗 Google Drive](https://drive.google.com/file/d/12piOxn3gf99fVnmgzalBvt6C9xJ9CCQ1/view?usp=share_link)
+
 </div>
 
 
@@ -66,7 +69,7 @@ And you will get results like this:
 </div>
 
 ## Dataset
-Download our ReasonAff datasrt [here](https://drive.google.com/file/d/1J2Li8gSDKSfv4hflNvMcXdcO7xhGtVlZ/view?usp=drive_link)
+Download our ReasonAff datasrt [🤗 HuggingFace](https://huggingface.co/datasets/hqking/affordance-R1) ,[🤗 Google Drive](https://drive.google.com/file/d/12piOxn3gf99fVnmgzalBvt6C9xJ9CCQ1/view?usp=share_link)
 As mentioned in the paper, we found there are some coarse ground truth in the original dataset, and we are trying to filter some dataset in the test split of the data, and we will release it soon! Stay tuned!
 ## Training
 Download pretrained models:[Qwen2.5-VL-7B](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct) and [SAM2](https://huggingface.co/facebook/sam2-hiera-large)
